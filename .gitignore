@@ -1,0 +1,17 @@
+# build / deps
+.aws-sam/
+node_modules/
+# config local do SAM (pode conter dados da conta/e-mail)
+samconfig.toml
+samconfig.yaml
+# credenciais e segredos
+.env
+.env.*
+*.pem
+credentials
+.aws/
+# config local do Claude
+.claude/settings.local.json
+# SO / editores
+.DS_Store
+*.log
