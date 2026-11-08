@@ -9,6 +9,7 @@ Experimentos de Security Chaos Engineering em ambiente serverless (AWS SAM, us-e
 - Nunca commitar credenciais, `samconfig.toml`, `.aws-sam/` ou `node_modules/`.
 
 ## AWS
+- **Usar somente o perfil `sce`** (conta pessoal criada para o artigo): todo comando com `--profile sce` / `AWS_PROFILE=sce`. Os perfis `default`, `dev`, `sandbox`, `local` e `prod` são da empresa — **nunca** usar.
 - Região `us-east-1`, stack único `sce-serverless`, tag `projeto=sce-artigo` em tudo, logs com retenção de 1 dia.
 - Antes de qualquer comando que crie recurso pago ou inicie experimento FIS: mostrar o comando e o custo estimado e esperar ok.
 - Experimentos FIS curtos (2–5 min), sempre com condição de parada e rollback.
