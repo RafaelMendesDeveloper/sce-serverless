@@ -43,7 +43,16 @@ echo "3) esvaziando buckets do stack"
 for k in DadosBucket SensivelBucket FisConfigBucket TrilhaBucket; do esvaziar_bucket "$(saida $k)"; done
 
 echo "4) apagando o stack $STACK"
-sam delete --stack-name "$STACK" --region "$AWS_REGION" --no-prompts
+TRILHA_BUCKET=$(saida TrilhaBucket)
+if ! sam delete --stack-name "$STACK" --region "$AWS_REGION" --no-prompts; then
+  # O CloudTrail pode entregar logs pendentes depois do stop-logging e o bucket da trilha
+  # volta a ter objetos (DELETE_FAILED). Esvazia de novo e repete a remoção.
+  echo "  remoção falhou; esvaziando o bucket da trilha de novo e repetindo"
+  sleep 30
+  esvaziar_bucket "$TRILHA_BUCKET"
+  aws cloudformation delete-stack --stack-name "$STACK"
+  aws cloudformation wait stack-delete-complete --stack-name "$STACK" && echo "  stack apagado"
+fi
 
 echo "5) apagando o stack de artefatos do SAM (aws-sam-cli-managed-default)"
 SAMB=$(aws cloudformation describe-stacks --stack-name aws-sam-cli-managed-default \
