@@ -1,0 +1,118 @@
+{
+  "experimento": "E2",
+  "rodada": 3,
+  "template_id": "EXT3FSpM1k7nzJeVW",
+  "experimento_id": "EXPjikTgDTstHiL5rJ",
+  "estado": {
+    "status": "completed",
+    "reason": "Experiment completed."
+  },
+  "pedido_inicio": "2026-11-09T02:20:06.154Z",
+  "inicio": "2026-11-09T02:20:07.430Z",
+  "fim": "2026-11-09T02:20:59.947Z",
+  "acoes": {
+    "injetarPayloadAdulterado": {
+      "acao": "aws:ssm:start-automation-execution",
+      "estado": {
+        "status": "completed",
+        "reason": "Automation execution completed successfully."
+      },
+      "inicio": "2026-11-09T02:20:18.737Z",
+      "fim": "2026-11-09T02:20:39.165Z",
+      "parametros": {
+        "documentArn": "arn:aws:ssm:us-east-1:337443953606:document/sce-e2-payload-adulterado",
+        "documentParameters": "{\"AutomationAssumeRole\":\"arn:aws:iam::337443953606:role/sce-e2-automacao-role\",\"PorTipo\":\"10\"}",
+        "maxDuration": "PT5M"
+      }
+    }
+  },
+  "condicoes_parada": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:337443953606:alarm:sce-erro-a-alto"
+    }
+  ],
+  "cliente": {
+    "inicio": "2026-11-09T02:19:36.152Z",
+    "fim": "2026-11-09T02:22:11.329Z",
+    "taxa_alvo_rps": 1,
+    "duracao_alvo_s": 3600,
+    "enviados": 156,
+    "ok": 156,
+    "erro_funcao": 0,
+    "erro_api": 0,
+    "throttle_a": 0,
+    "taxa_real_rps": 1.005,
+    "latencia_cliente_media_ms": 216.3,
+    "latencia_cliente_p95_ms": 332.2
+  },
+  "analise": {
+    "automacao": {
+      "id": "23a98536-ebc6-4569-8c5f-4b4e73fb46f9",
+      "status": "Success",
+      "passos": {
+        "InjetarPayloadsAdulterados": {
+          "status": "Success",
+          "inicio": "2026-11-09T02:20:18.934Z",
+          "fim": "2026-11-09T02:20:22.510Z"
+        }
+      },
+      "resultado": {
+        "marca": "23a98536",
+        "aceitos_para_entrega": {
+          "extra": 10,
+          "tipo": 10,
+          "faixa": 10
+        },
+        "por_tipo": 10
+      }
+    },
+    "marca": "23a98536",
+    "instante_injecao": "2026-11-09T02:20:18.934Z",
+    "por_tipo": {
+      "extra": {
+        "enviados": 10,
+        "rejeitados": 10,
+        "taxa_rejeicao_pct": 100,
+        "motivos": [
+          "campo_extra:is_admin,destino"
+        ]
+      },
+      "tipo": {
+        "enviados": 10,
+        "rejeitados": 10,
+        "taxa_rejeicao_pct": 100,
+        "motivos": [
+          "tipo_invalido:valor"
+        ]
+      },
+      "faixa": {
+        "enviados": 10,
+        "rejeitados": 10,
+        "taxa_rejeicao_pct": 100,
+        "motivos": [
+          "fora_da_faixa:valor"
+        ]
+      }
+    },
+    "total_enviados": 30,
+    "total_rejeitados": 30,
+    "taxa_rejeicao_total_pct": 100,
+    "primeira_rejeicao_s": 2,
+    "objetos_indevidos_s3": 0,
+    "alarmes": {
+      "sce-rejeicao-payload": {
+        "disparou": true,
+        "instante": "2026-11-09T02:21:30.589Z",
+        "segundos_desde_injecao": 71.7
+      },
+      "sce-erro-a-alto": {
+        "disparou": false,
+        "instante": null,
+        "segundos_desde_injecao": null
+      }
+    },
+    "tempo_ate_alarme_rejeicao_s": 71.7,
+    "hipotese_confirmada": true
+  }
+}
