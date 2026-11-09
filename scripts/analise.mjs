@@ -182,6 +182,9 @@ async function analisarE3(bruto) {
     fator_multiplicacao: fator && Number(fator.toFixed(3)),
     fator_estado_estavel: fatorBase,
     fator_vs_estado_estavel: fator && Number((fator / fatorBase).toFixed(3)),
+    // Pico por minuto: invocações de B no pior minuto ÷ pedidos/min do tráfego (taxa real × 60)
+    invocacoes_b_pico_min: Math.max(0, ...B.invocacoes_por_minuto.map((x) => x.n)),
+    fator_pico_minuto: Number((Math.max(0, ...B.invocacoes_por_minuto.map((x) => x.n)) / (bruto.cliente.taxa_real_rps * 60)).toFixed(2)),
     throttles_a: A.throttles,
     throttles_b: B.throttles,
     concorrencia_pico_b: B.concorrencia_pico,

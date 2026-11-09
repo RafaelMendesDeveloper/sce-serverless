@@ -67,7 +67,7 @@ for (const [k, xs] of Object.entries(E3)) {
   if (!xs.length) continue;
   t3.push([k, conta(xs, (e) => e.analise.hipotese_confirmada), conta(xs, (e) => e.analise.tempo_ate_alarme_custo_s != null),
     `${mdp(xs.map((e) => e.analise.tempo_ate_alarme_custo_s))} s (alarme de custo)`,
-    `Fator B/A ${mdp(xs.map((e) => e.analise.fator_multiplicacao), 2)} (estado estável ${f1(base.fator_multiplicacao_b_sobre_a, 2)}); custo/pedido ${mdp(xs.map((e) => e.analise.custo_por_pedido_vs_estado_estavel), 2)}× o estável; throttles A/B ${xs.map((e) => `${e.analise.throttles_a}/${e.analise.throttles_b}`).join(', ')}; pico de concorrência ${xs.map((e) => e.analise.concorrencia_pico_b).join('/')}${xs.some((e) => e.analise.parado_por_condicao) ? '; parado pela condição de parada' : ''}`]);
+    `Fator B/A ${mdp(xs.map((e) => e.analise.fator_multiplicacao), 2)} (pico por minuto ${mdp(xs.map((e) => e.analise.fator_pico_minuto), 2)}) (estado estável ${f1(base.fator_multiplicacao_b_sobre_a, 2)}); custo/pedido ${mdp(xs.map((e) => e.analise.custo_por_pedido_vs_estado_estavel), 2)}× o estável; throttles A/B ${xs.map((e) => `${e.analise.throttles_a}/${e.analise.throttles_b}`).join(', ')}; pico de concorrência ${xs.map((e) => e.analise.concorrencia_pico_b).join('/')}${xs.some((e) => e.analise.parado_por_condicao) ? '; parado pela condição de parada' : ''}`]);
 }
 
 // ---------------------------------------------------------------- markdown
@@ -106,8 +106,8 @@ if (E2.length) {
 const e3 = Object.values(E3).flat();
 if (e3.length) {
   md.push('## E3 — Denial of Wallet (por execução)', '', tabMd(
-    ['Variante', 'Rodada', 'Inv. A', 'Inv. B', 'Fator B/A', 'Throttles A/B', 'Pico conc. B', 'Descartados B', 'Custo janela (US$)', 'Custo/h (US$)', 'Custo/pedido vs estável', 'Alarme invoc. (s)', 'Alarme amplif. (s)', 'Estado FIS'],
-    e3.map((e) => { const x = e.analise; return [e.experimento, e.rodada, x.produtor.invocacoes, x.consumidor.invocacoes, f1(x.fator_multiplicacao, 2), `${x.throttles_a}/${x.throttles_b}`,
+    ['Variante', 'Rodada', 'Inv. A', 'Inv. B', 'Fator B/A', 'Fator pico/min', 'Throttles A/B', 'Pico conc. B', 'Descartados B', 'Custo janela (US$)', 'Custo/h (US$)', 'Custo/pedido vs estável', 'Alarme invoc. (s)', 'Alarme amplif. (s)', 'Estado FIS'],
+    e3.map((e) => { const x = e.analise; return [e.experimento, e.rodada, x.produtor.invocacoes, x.consumidor.invocacoes, f1(x.fator_multiplicacao, 2), f1(x.fator_pico_minuto, 2), `${x.throttles_a}/${x.throttles_b}`,
       x.concorrencia_pico_b, x.eventos_descartados_b, x.custo.custo_janela_usd.toFixed(5), x.custo.custo_hora_usd.toFixed(4), `${f1(x.custo_por_pedido_vs_estado_estavel, 2)}×`,
       f1(x.alarmes['sce-invocacoes-b-alto'].segundos_desde_injecao), f1(x.alarmes['sce-amplificacao-b'].segundos_desde_injecao), e.estado.status]; })), '');
   md.push('Obs.: o AWS Budgets não é atualizado em tempo real; ele foi mantido como controle de segunda linha e não foi usado como métrica.', '');
