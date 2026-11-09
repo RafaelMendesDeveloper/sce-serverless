@@ -1,0 +1,467 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  sce-serverless - Security Chaos Engineering em ambiente serverless (artigo UFSC).
+  A (produtor) -> invoke assincrono -> B (consumidor) -> S3.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Description: E-mail que recebe os alertas (SNS e Budget)
+  ConcorrenciaReservadaB:
+    Type: Number
+    Default: 0
+    Description: Concorrencia reservada de B (0 = nao configura; exige cota de conta > 10)
+  MaxRetriesB:
+    Type: Number
+    Default: 2
+    AllowedValues: [0, 1, 2]
+    Description: MaximumRetryAttempts da invocacao assincrona de B
+  LimiteInvocacoesBMin:
+    Type: Number
+    Default: 120
+    Description: Alarme de custo - invocacoes de B por minuto (estado estavel ~60/min)
+  LimiteErroAPct:
+    Type: Number
+    Default: 5
+    Description: Alarme (condicao de parada do FIS) - taxa de erro de A em %
+  FisLayerArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /aws/service/fis/lambda-extension/AWS-FIS-extension-arm64/1.x.x
+    Description: ARN oficial da extensao do AWS FIS para Lambda (arm64), via parametro publico SSM
+
+Conditions:
+  TemConcorrenciaReservada: !Not [!Equals [!Ref ConcorrenciaReservadaB, '0']]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 128
+    Timeout: 5
+    Tags:
+      projeto: sce-artigo
+
+Resources:
+  # ---------------------------------------------------------------- dados
+  DadosBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # Bucket "sensivel" fora do escopo de B (alvo da sondagem no E1)
+  SensivelBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # Bucket de configuracao da extensao do FIS (FIS escreve, extensao le)
+  FisConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # ---------------------------------------------------------------- logs (retencao 1 dia)
+  ProdutorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/sce-produtor
+      RetentionInDays: 1
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  ConsumidorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/sce-consumidor
+      RetentionInDays: 1
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # ---------------------------------------------------------------- IAM (privilegio minimo)
+  ProdutorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sce-produtor-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: base
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub '${ProdutorLogGroup.Arn}'
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:sce-consumidor'
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  ConsumidorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sce-consumidor-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: base
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub '${ConsumidorLogGroup.Arn}'
+              - Effect: Allow
+                Action: [s3:PutObject, s3:GetObject]
+                Resource: !Sub '${DadosBucket.Arn}/dados/*'
+        # Exigido pela extensao do FIS (doc: use-lambda-actions) - leitura so do prefixo FisConfigs/
+        - PolicyName: fis-extensao-leitura
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt FisConfigBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix: ['FisConfigs/*']
+              - Effect: Allow
+                Action: s3:GetObject
+                Resource: !Sub '${FisConfigBucket.Arn}/FisConfigs/*'
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # ---------------------------------------------------------------- funcoes
+  ProdutorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: sce-produtor
+      CodeUri: src/produtor/
+      Handler: index.handler
+      Role: !GetAtt ProdutorRole.Arn
+      LoggingConfig:
+        LogGroup: !Ref ProdutorLogGroup
+      Environment:
+        Variables:
+          CONSUMIDOR_FUNCTION: !Ref ConsumidorFunction
+
+  ConsumidorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: sce-consumidor
+      CodeUri: src/consumidor/
+      Handler: index.handler
+      Role: !GetAtt ConsumidorRole.Arn
+      ReservedConcurrentExecutions: !If [TemConcorrenciaReservada, !Ref ConcorrenciaReservadaB, !Ref AWS::NoValue]
+      LoggingConfig:
+        LogGroup: !Ref ConsumidorLogGroup
+      Layers:
+        - !Ref FisLayerArn
+      EventInvokeConfig:
+        MaximumRetryAttempts: !Ref MaxRetriesB
+        MaximumEventAgeInSeconds: 600
+      Environment:
+        Variables:
+          DADOS_BUCKET: !Ref DadosBucket
+          # Extensao do FIS (doc: use-lambda-actions)
+          AWS_LAMBDA_EXEC_WRAPPER: /opt/aws-fis/bootstrap
+          AWS_FIS_CONFIGURATION_LOCATION: !Sub '${FisConfigBucket.Arn}/FisConfigs/'
+          AWS_FIS_SLOW_POLL_INTERVAL_SECONDS: '10'
+          AWS_FIS_LOG_LEVEL: WARN
+
+  # ---------------------------------------------------------------- alertas
+  AlertasTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: sce-alertas
+      Subscription:
+        - Protocol: email
+          Endpoint: !Ref AlertEmail
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  AlertasTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics: [!Ref AlertasTopic]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DonoDaConta
+            Effect: Allow
+            Principal: { AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root' }
+            Action: [sns:Publish, sns:Subscribe, sns:GetTopicAttributes, sns:SetTopicAttributes]
+            Resource: !Ref AlertasTopic
+          - Sid: CloudWatchAlarmes
+            Effect: Allow
+            Principal: { Service: cloudwatch.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref AlertasTopic
+            Condition:
+              StringEquals: { aws:SourceAccount: !Ref AWS::AccountId }
+          - Sid: EventBridgeDeteccao
+            Effect: Allow
+            Principal: { Service: events.amazonaws.com }
+            Action: sns:Publish
+            Resource: !Ref AlertasTopic
+            Condition:
+              ArnEquals: { aws:SourceArn: !GetAtt DeteccaoIamRule.Arn }
+
+  # ---------------------------------------------------------------- metricas e alarmes
+  RejeicaoMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ConsumidorLogGroup
+      FilterPattern: '{ $.evento = "payload_rejeitado" }'
+      MetricTransformations:
+        - MetricNamespace: SCE
+          MetricName: PayloadRejeitado
+          MetricValue: '1'
+          Unit: Count
+
+  GravadoMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ConsumidorLogGroup
+      FilterPattern: '{ $.evento = "pedido_gravado" }'
+      MetricTransformations:
+        - MetricNamespace: SCE
+          MetricName: PedidoGravado
+          MetricValue: '1'
+          Unit: Count
+
+  RejeicaoAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: sce-rejeicao-payload
+      AlarmDescription: B rejeitou payload(s) - possivel adulteracao (E2)
+      Namespace: SCE
+      MetricName: PayloadRejeitado
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertasTopic]
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  InvocacoesBAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: sce-invocacoes-b-alto
+      AlarmDescription: Invocacoes de B acima do limite por minuto - sinal antecipado de custo (E3)
+      Namespace: AWS/Lambda
+      MetricName: Invocations
+      Dimensions: [{ Name: FunctionName, Value: sce-consumidor }]
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: !Ref LimiteInvocacoesBMin
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertasTopic]
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # Condicao de parada dos experimentos FIS
+  ErroAAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: sce-erro-a-alto
+      AlarmDescription: Taxa de erro de A acima do limite - condicao de parada do FIS
+      EvaluationPeriods: 1
+      Threshold: !Ref LimiteErroAPct
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertasTopic]
+      Metrics:
+        - Id: erros
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Errors
+              Dimensions: [{ Name: FunctionName, Value: sce-produtor }]
+            Period: 60
+            Stat: Sum
+        - Id: invs
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions: [{ Name: FunctionName, Value: sce-produtor }]
+            Period: 60
+            Stat: Sum
+        - Id: taxa
+          Label: TaxaErroA
+          Expression: 'IF(invs > 0, 100 * erros / invs, 0)'
+          ReturnData: true
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # ---------------------------------------------------------------- deteccao de IAM (E1)
+  TrilhaBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: expira-1-dia
+            Status: Enabled
+            ExpirationInDays: 1
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  TrilhaBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref TrilhaBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: CloudTrailAclCheck
+            Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:GetBucketAcl
+            Resource: !GetAtt TrilhaBucket.Arn
+            Condition:
+              StringEquals:
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/sce-trilha'
+          - Sid: CloudTrailWrite
+            Effect: Allow
+            Principal: { Service: cloudtrail.amazonaws.com }
+            Action: s3:PutObject
+            Resource: !Sub '${TrilhaBucket.Arn}/AWSLogs/${AWS::AccountId}/*'
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                aws:SourceArn: !Sub 'arn:aws:cloudtrail:${AWS::Region}:${AWS::AccountId}:trail/sce-trilha'
+
+  Trilha:
+    Type: AWS::CloudTrail::Trail
+    DependsOn: TrilhaBucketPolicy
+    Properties:
+      TrailName: sce-trilha
+      S3BucketName: !Ref TrilhaBucket
+      IsLogging: true
+      IsMultiRegionTrail: false
+      IncludeGlobalServiceEvents: true
+      EventSelectors:
+        - ReadWriteType: All
+          IncludeManagementEvents: true
+          # Unico data event: objetos do bucket sensivel (evidencia de acesso indevido no E1)
+          DataResources:
+            - Type: AWS::S3::Object
+              Values: [!Sub '${SensivelBucket.Arn}/']
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # EventBridge exige nome de log group de destino iniciado em /aws/events/
+  DeteccoesLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/events/sce/deteccoes
+      RetentionInDays: 1
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  DeteccoesLogsResourcePolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: sce-eventbridge-para-deteccoes
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Principal": { "Service": ["events.amazonaws.com", "delivery.logs.amazonaws.com"] },
+            "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+            "Resource": "${DeteccoesLogGroup.Arn}"
+          }]
+        }
+
+  DeteccaoIamRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: sce-deteccao-iam-consumidor
+      Description: Mudanca de politica no papel de B (E1)
+      State: ENABLED
+      EventPattern:
+        source: [aws.iam]
+        detail-type: [AWS API Call via CloudTrail]
+        detail:
+          eventSource: [iam.amazonaws.com]
+          eventName: [AttachRolePolicy, PutRolePolicy, DetachRolePolicy, DeleteRolePolicy]
+          requestParameters:
+            roleName: [!Ref ConsumidorRole]
+      Targets:
+        - Id: sns
+          Arn: !Ref AlertasTopic
+        - Id: logs
+          Arn: !GetAtt DeteccoesLogGroup.Arn
+
+  # ---------------------------------------------------------------- orcamento
+  Orcamento:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: sce-artigo-5usd
+        BudgetType: COST
+        TimeUnit: MONTHLY
+        BudgetLimit: { Amount: 5, Unit: USD }
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 50
+            ThresholdType: PERCENTAGE
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+        - Notification:
+            NotificationType: FORECASTED
+            ComparisonOperator: GREATER_THAN
+            Threshold: 100
+            ThresholdType: PERCENTAGE
+          Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
+
+Outputs:
+  DadosBucket:
+    Value: !Ref DadosBucket
+  SensivelBucket:
+    Value: !Ref SensivelBucket
+  FisConfigBucket:
+    Value: !Ref FisConfigBucket
+  TrilhaBucket:
+    Value: !Ref TrilhaBucket
+  ProdutorFunction:
+    Value: !Ref ProdutorFunction
+  ConsumidorFunction:
+    Value: !Ref ConsumidorFunction
+  ConsumidorRole:
+    Value: !Ref ConsumidorRole
+  AlertasTopic:
+    Value: !Ref AlertasTopic
+  DeteccoesLogGroup:
+    Value: !Ref DeteccoesLogGroup
+  ErroAAlarmArn:
+    Value: !GetAtt ErroAAlarm.Arn

@@ -1,0 +1,19 @@
+{
+  "name": "sce-serverless",
+  "private": true,
+  "type": "module",
+  "description": "Scripts dos experimentos SCE (somente AWS SDK v3; as Lambdas usam o SDK do runtime)",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cloudformation": "^3.1164.0",
+    "@aws-sdk/client-cloudtrail": "^3.1164.0",
+    "@aws-sdk/client-cloudwatch": "^3.1164.0",
+    "@aws-sdk/client-cloudwatch-logs": "^3.1164.0",
+    "@aws-sdk/client-fis": "^3.1164.0",
+    "@aws-sdk/client-lambda": "^3.1164.0",
+    "@aws-sdk/client-s3": "^3.1164.0",
+    "@aws-sdk/client-ssm": "^3.1164.0"
+  }
+}
