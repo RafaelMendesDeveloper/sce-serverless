@@ -1,0 +1,178 @@
+{
+  "experimento": "E1",
+  "rodada": 3,
+  "template_id": "EXT3VTEY319r3Hcfz",
+  "experimento_id": "EXPjAwXSrE6AfjRpLz",
+  "estado": {
+    "status": "completed",
+    "reason": "Experiment completed."
+  },
+  "pedido_inicio": "2026-11-09T01:03:12.894Z",
+  "inicio": "2026-11-09T01:03:14.052Z",
+  "fim": "2026-11-09T01:05:48.036Z",
+  "acoes": {
+    "injetarPermissaoExcessiva": {
+      "acao": "aws:ssm:start-automation-execution",
+      "estado": {
+        "status": "completed",
+        "reason": "Automation execution completed successfully."
+      },
+      "inicio": "2026-11-09T01:03:25.356Z",
+      "fim": "2026-11-09T01:05:27.298Z",
+      "parametros": {
+        "documentArn": "arn:aws:ssm:us-east-1:337443953606:document/sce-e1-permissao-excessiva",
+        "documentParameters": "{\"AutomationAssumeRole\":\"arn:aws:iam::337443953606:role/sce-e1-automacao-role\",\"BucketSensivel\":\"sce-serverless-sensivelbucket-ovj8q8vf0vuv\",\"JanelaExposicao\":\"PT1M\"}",
+        "maxDuration": "PT5M"
+      }
+    }
+  },
+  "condicoes_parada": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:337443953606:alarm:sce-erro-a-alto"
+    }
+  ],
+  "cliente": {
+    "inicio": "2026-11-09T01:02:42.891Z",
+    "fim": "2026-11-09T01:06:52.078Z",
+    "taxa_alvo_rps": 1,
+    "duracao_alvo_s": 3600,
+    "enviados": 250,
+    "ok": 250,
+    "erro_funcao": 0,
+    "erro_api": 0,
+    "throttle_a": 0,
+    "taxa_real_rps": 1.003,
+    "latencia_cliente_media_ms": 208.6,
+    "latencia_cliente_p95_ms": 277.6
+  },
+  "analise": {
+    "automacao": {
+      "id": "f82b622d-d087-4bf8-ad89-07c4a4096f63",
+      "status": "Success",
+      "passos": {
+        "SondarAntes": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:03:25.586Z",
+          "fim": "2026-11-09T01:03:25.982Z"
+        },
+        "AnexarPolitica": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:03:26.174Z",
+          "fim": "2026-11-09T01:03:26.406Z"
+        },
+        "AguardarPropagacao": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:03:26.589Z",
+          "fim": "2026-11-09T01:03:46.841Z"
+        },
+        "SondarDurante": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:03:47.018Z",
+          "fim": "2026-11-09T01:03:47.294Z"
+        },
+        "JanelaDeExposicao": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:03:47.473Z",
+          "fim": "2026-11-09T01:04:47.750Z"
+        },
+        "RemoverPolitica": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:04:47.977Z",
+          "fim": "2026-11-09T01:04:48.223Z"
+        },
+        "AguardarPropagacaoRollback": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:04:48.419Z",
+          "fim": "2026-11-09T01:05:19.448Z"
+        },
+        "SondarDepois": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:05:19.577Z",
+          "fim": "2026-11-09T01:05:19.821Z"
+        }
+      }
+    },
+    "instante_injecao": "2026-11-09T01:03:26.406Z",
+    "instante_rollback": "2026-11-09T01:04:48.223Z",
+    "janela_exposicao_s": 81.8,
+    "deteccao": {
+      "detectado": true,
+      "mttd_s": 2.5,
+      "deteccao_rollback_s": 2.3,
+      "eventos": [
+        {
+          "evento": "PutRolePolicy",
+          "hora_evento_api": "2026-11-09T01:03:26Z",
+          "hora_registro_deteccao": "2026-11-09T01:03:28.910Z",
+          "principal": "arn:aws:sts::337443953606:assumed-role/sce-e1-automacao-role/Automation-f82b622d-d087-4bf8-ad89-07c4a4096f63"
+        },
+        {
+          "evento": "DeleteRolePolicy",
+          "hora_evento_api": "2026-11-09T01:04:48Z",
+          "hora_registro_deteccao": "2026-11-09T01:04:50.510Z",
+          "principal": "arn:aws:sts::337443953606:assumed-role/sce-e1-automacao-role/Automation-f82b622d-d087-4bf8-ad89-07c4a4096f63"
+        }
+      ]
+    },
+    "sondagem": {
+      "antes": {
+        "resultado": "negado",
+        "erro": "AccessDenied"
+      },
+      "durante": {
+        "resultado": "permitido",
+        "bytes": 90
+      },
+      "depois": {
+        "resultado": "negado",
+        "erro": "AccessDenied"
+      }
+    },
+    "acesso_indevido_sucesso": true,
+    "acesso_visivel_logs_b": true,
+    "acesso_visivel_cloudtrail": true,
+    "cloudtrail_data_events": [
+      {
+        "hora": "2026-11-09T01:03:25Z",
+        "principal": "arn:aws:sts::337443953606:assumed-role/sce-consumidor-role/sce-consumidor",
+        "erro": "AccessDenied"
+      },
+      {
+        "hora": "2026-11-09T01:03:47Z",
+        "principal": "arn:aws:sts::337443953606:assumed-role/sce-consumidor-role/sce-consumidor",
+        "erro": null
+      }
+    ],
+    "logs_b_sondagem": [
+      {
+        "hora": "2026-11-09T01:03:25.714Z",
+        "evento": "sondagem_acesso",
+        "resultado": "negado",
+        "bucket": "sce-serverless-sensivelbucket-ovj8q8vf0vuv",
+        "key": "confidencial/segredo.json",
+        "erro": "AccessDenied"
+      },
+      {
+        "hora": "2026-11-09T01:03:47.185Z",
+        "evento": "sondagem_acesso",
+        "resultado": "permitido",
+        "bucket": "sce-serverless-sensivelbucket-ovj8q8vf0vuv",
+        "key": "confidencial/segredo.json",
+        "bytes": 90
+      },
+      {
+        "hora": "2026-11-09T01:05:19.714Z",
+        "evento": "sondagem_acesso",
+        "resultado": "negado",
+        "bucket": "sce-serverless-sensivelbucket-ovj8q8vf0vuv",
+        "key": "confidencial/segredo.json",
+        "erro": "AccessDenied"
+      }
+    ],
+    "rollback_ok": true,
+    "politica_presente_apos": false,
+    "deteccao_antes_do_rollback": true,
+    "hipotese_confirmada": true
+  }
+}
