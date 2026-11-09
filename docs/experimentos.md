@@ -38,6 +38,12 @@ gerador de tráfego ──Invoke──▶ Lambda A (produtor) ──Invoke assí
   - **Acesso indevido**: resultado da sondagem durante a exposição.
   - **Visibilidade**: o acesso aparece nos logs estruturados de B (`sondagem_acesso`) e nos *data events* do CloudTrail (`GetObject` pelo papel de B, com `errorCode` nos acessos negados).
 - **Rollback.** O passo `RemoverPolitica` (`iam:DeleteRolePolicy`) roda em qualquer caso: todos os passos posteriores à injeção têm `onFailure` e `onCancel` apontando para ele. Assim, o rollback ocorre mesmo que o FIS interrompa a automação pela condição de parada. Depois de mais 20 s, uma sondagem final verifica que o acesso voltou a ser negado. O script de análise confirma no IAM que a política não existe mais, e o teardown também a remove como terceira linha de defesa.
+- **Resultados (n = 3).**
+  - A detecção ocorreu em 3/3 rodadas, com **MTTD de 2,5 ± 0,5 s**. A detecção do rollback (`DeleteRolePolicy`) levou cerca de 2,2 s.
+  - Nas três rodadas, o acesso ao bucket sensível foi negado antes da injeção, **permitido durante a exposição** (≈ 82 s) e negado de novo após o rollback.
+  - O acesso indevido aparece tanto nos logs de B quanto nos *data events* do CloudTrail (sequência `AccessDenied` → sucesso → `AccessDenied`, atribuída ao papel `sce-consumidor-role`).
+  - Rollback ok em 3/3, e a detecção sempre chegou antes do rollback.
+  - **Leitura crítica:** a detecção é rápida, mas apenas **detectiva**. Durante os cerca de 80 s de exposição, o dado sensível foi lido. Sem uma resposta automática (por exemplo, uma Lambda acionada pelo EventBridge que reverta a política), o tempo de exposição real depende do tempo de reação humana ao e-mail.
 - **Lições de implementação.**
   - (i) Para a ação `aws:ssm:start-automation-execution`, a permissão `ssm:StartAutomationExecution` do papel do FIS é avaliada contra três recursos: `document/`, `automation-definition/` e `automation-execution/`. Duas execuções falharam com `AccessDenied` até isso ser identificado no CloudTrail. Ambas estão em `resultados/falhas/` e nenhuma chegou à injeção.
   - (ii) O SSM não aceita `aws:sleep` no fluxo de cancelamento, por isso a espera pós-rollback usa `aws:executeScript`.
