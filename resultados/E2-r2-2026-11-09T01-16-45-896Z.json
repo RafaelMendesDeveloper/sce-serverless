@@ -1,0 +1,118 @@
+{
+  "experimento": "E2",
+  "rodada": 2,
+  "template_id": "EXT3FSpM1k7nzJeVW",
+  "experimento_id": "EXPxYJnrjNuumZF3vA",
+  "estado": {
+    "status": "completed",
+    "reason": "Experiment completed."
+  },
+  "pedido_inicio": "2026-11-09T01:16:45.896Z",
+  "inicio": "2026-11-09T01:16:47.053Z",
+  "fim": "2026-11-09T01:17:39.636Z",
+  "acoes": {
+    "injetarPayloadAdulterado": {
+      "acao": "aws:ssm:start-automation-execution",
+      "estado": {
+        "status": "completed",
+        "reason": "Automation execution completed successfully."
+      },
+      "inicio": "2026-11-09T01:16:58.350Z",
+      "fim": "2026-11-09T01:17:18.784Z",
+      "parametros": {
+        "documentArn": "arn:aws:ssm:us-east-1:337443953606:document/sce-e2-payload-adulterado",
+        "documentParameters": "{\"AutomationAssumeRole\":\"arn:aws:iam::337443953606:role/sce-e2-automacao-role\",\"PorTipo\":\"10\"}",
+        "maxDuration": "PT5M"
+      }
+    }
+  },
+  "condicoes_parada": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:337443953606:alarm:sce-erro-a-alto"
+    }
+  ],
+  "cliente": {
+    "inicio": "2026-11-09T01:16:15.893Z",
+    "fim": "2026-11-09T01:18:51.159Z",
+    "taxa_alvo_rps": 1,
+    "duracao_alvo_s": 3600,
+    "enviados": 156,
+    "ok": 156,
+    "erro_funcao": 0,
+    "erro_api": 0,
+    "throttle_a": 0,
+    "taxa_real_rps": 1.005,
+    "latencia_cliente_media_ms": 218.7,
+    "latencia_cliente_p95_ms": 301.2
+  },
+  "analise": {
+    "automacao": {
+      "id": "af58e369-5928-42fd-b3d3-79de43f89719",
+      "status": "Success",
+      "passos": {
+        "InjetarPayloadsAdulterados": {
+          "status": "Success",
+          "inicio": "2026-11-09T01:16:58.582Z",
+          "fim": "2026-11-09T01:17:11.485Z"
+        }
+      },
+      "resultado": {
+        "marca": "af58e369",
+        "aceitos_para_entrega": {
+          "extra": 10,
+          "tipo": 10,
+          "faixa": 10
+        },
+        "por_tipo": 10
+      }
+    },
+    "marca": "af58e369",
+    "instante_injecao": "2026-11-09T01:16:58.582Z",
+    "por_tipo": {
+      "extra": {
+        "enviados": 10,
+        "rejeitados": 10,
+        "taxa_rejeicao_pct": 100,
+        "motivos": [
+          "campo_extra:is_admin,destino"
+        ]
+      },
+      "tipo": {
+        "enviados": 10,
+        "rejeitados": 10,
+        "taxa_rejeicao_pct": 100,
+        "motivos": [
+          "tipo_invalido:valor"
+        ]
+      },
+      "faixa": {
+        "enviados": 10,
+        "rejeitados": 10,
+        "taxa_rejeicao_pct": 100,
+        "motivos": [
+          "fora_da_faixa:valor"
+        ]
+      }
+    },
+    "total_enviados": 30,
+    "total_rejeitados": 30,
+    "taxa_rejeicao_total_pct": 100,
+    "primeira_rejeicao_s": 2.6,
+    "objetos_indevidos_s3": 0,
+    "alarmes": {
+      "sce-rejeicao-payload": {
+        "disparou": false,
+        "instante": null,
+        "segundos_desde_injecao": null
+      },
+      "sce-erro-a-alto": {
+        "disparou": false,
+        "instante": null,
+        "segundos_desde_injecao": null
+      }
+    },
+    "tempo_ate_alarme_rejeicao_s": null,
+    "hipotese_confirmada": false
+  }
+}

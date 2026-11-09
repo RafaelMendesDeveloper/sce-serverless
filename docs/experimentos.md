@@ -56,6 +56,7 @@ gerador de tráfego ──Invoke──▶ Lambda A (produtor) ──Invoke assí
   - número de objetos `dados/e2-*-<marca>.json` no S3 (o esperado é 0);
   - transição do alarme `sce-rejeicao-payload` para ALARM e o tempo desde o início da injeção.
 - **Rollback.** Não há estado a reverter: os eventos adulterados apenas geram rejeições e logs. O tráfego legítimo de fundo continua sendo gravado normalmente.
+- **Achado (falha do controle revelada pelo experimento).** Na primeira bateria, o alarme de rejeição disparou na rodada 1 e não voltou mais para OK. O metric filter não tinha `DefaultValue`, então a métrica era esparsa: sem pontos novos, o CloudWatch manteve o último estado, ALARM. Com isso, as rodadas 2 e 3 não geraram nenhum alerta novo, embora B tenha rejeitado 30/30 eventos em cada uma. Em produção, isso significa que **apenas o primeiro ataque seria notificado**. A correção foi `DefaultValue: 0`, que publica 0 a cada log não casado, e as rodadas 2 e 3 foram refeitas. As execuções descartadas estão em `resultados/falhas/`.
 
 ## 4. E3 — Disponibilidade: Denial of Wallet
 

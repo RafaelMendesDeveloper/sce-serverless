@@ -237,6 +237,8 @@ Resources:
         - MetricNamespace: SCE
           MetricName: PayloadRejeitado
           MetricValue: '1'
+          # 0 a cada log nao casado: sem isso a metrica e esparsa e o alarme fica preso em ALARM
+          DefaultValue: 0
           Unit: Count
 
   GravadoMetricFilter:
@@ -248,6 +250,8 @@ Resources:
         - MetricNamespace: SCE
           MetricName: PedidoGravado
           MetricValue: '1'
+          # 0 a cada log nao casado: sem isso a metrica e esparsa e o alarme fica preso em ALARM
+          DefaultValue: 0
           Unit: Count
 
   RejeicaoAlarm:
