@@ -44,7 +44,8 @@ export const handler = async (ev, ctx) => {
 
   const motivo = validar(ev);
   if (motivo) {
-    log({ evento: 'payload_rejeitado', motivo, tipo: motivo.split(':')[0], request_id: ctx?.awsRequestId });
+    const pedidoId = typeof ev?.pedido_id === 'string' ? ev.pedido_id.slice(0, 80) : null;
+    log({ evento: 'payload_rejeitado', motivo, tipo: motivo.split(':')[0], pedido_id: pedidoId, request_id: ctx?.awsRequestId });
     return { aceito: false, motivo };
   }
 

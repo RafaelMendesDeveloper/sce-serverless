@@ -187,7 +187,7 @@ Resources:
           # Extensao do FIS (doc: use-lambda-actions)
           AWS_LAMBDA_EXEC_WRAPPER: /opt/aws-fis/bootstrap
           AWS_FIS_CONFIGURATION_LOCATION: !Sub '${FisConfigBucket.Arn}/FisConfigs/'
-          AWS_FIS_SLOW_POLL_INTERVAL_SECONDS: '10'
+          AWS_FIS_SLOW_POLL_INTERVAL_SECONDS: '20'  # minimo aceito pela extensao (>= hot-poll de 20 s)
           AWS_FIS_LOG_LEVEL: WARN
 
   # ---------------------------------------------------------------- alertas
