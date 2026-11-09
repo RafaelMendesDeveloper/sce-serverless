@@ -1,0 +1,186 @@
+{
+  "experimento": "E3-erro-50",
+  "rodada": 1,
+  "template_id": "EXT9KKDBJs3oc8rCQ",
+  "experimento_id": "EXPfhRnc9Hyo6fZxQJ",
+  "estado": {
+    "status": "completed",
+    "reason": "Experiment completed."
+  },
+  "pedido_inicio": "2026-11-09T01:53:53.623Z",
+  "inicio": "2026-11-09T01:53:55.050Z",
+  "fim": "2026-11-09T01:57:07.130Z",
+  "acoes": {
+    "erroB": {
+      "acao": "aws:lambda:invocation-error",
+      "estado": {
+        "status": "completed",
+        "reason": "Action was completed."
+      },
+      "inicio": "2026-11-09T01:54:06.618Z",
+      "fim": "2026-11-09T01:57:06.631Z",
+      "parametros": {
+        "duration": "PT3M",
+        "invocationPercentage": "50",
+        "preventExecution": "true"
+      }
+    }
+  },
+  "condicoes_parada": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:337443953606:alarm:sce-erro-a-alto"
+    }
+  ],
+  "cliente": {
+    "inicio": "2026-11-09T01:53:23.620Z",
+    "fim": "2026-11-09T01:58:10.619Z",
+    "taxa_alvo_rps": 5,
+    "duracao_alvo_s": 3600,
+    "enviados": 1435,
+    "ok": 1435,
+    "erro_funcao": 0,
+    "erro_api": 0,
+    "throttle_a": 0,
+    "taxa_real_rps": 5,
+    "latencia_cliente_media_ms": 216.1,
+    "latencia_cliente_p95_ms": 259.7
+  },
+  "analise": {
+    "janela": {
+      "inicio": "2026-11-09T01:53:23.620Z",
+      "fim": "2026-11-09T02:01:10.619Z",
+      "inicio_falha": "2026-11-09T01:54:06.618Z",
+      "fim_falha": "2026-11-09T01:57:06.631Z",
+      "segundos": 466.999
+    },
+    "parametros": {
+      "duration": "PT3M",
+      "invocationPercentage": "50",
+      "preventExecution": "true"
+    },
+    "produtor": {
+      "funcao": "sce-produtor",
+      "invocacoes": 1435,
+      "erros": 0,
+      "throttles": 0,
+      "duracao_total_ms": 37980.7099952,
+      "duracao_media_ms": 26.467393724878047,
+      "duracao_p95_ms": 68.06437166056874,
+      "concorrencia_pico": 3,
+      "async_recebidos": 0,
+      "async_descartados": 0,
+      "async_idade_max_ms": 0,
+      "invocacoes_por_minuto": [
+        {
+          "minuto": "2026-11-09T01:53:00.000Z",
+          "n": 180
+        },
+        {
+          "minuto": "2026-11-09T01:54:00.000Z",
+          "n": 300
+        },
+        {
+          "minuto": "2026-11-09T01:55:00.000Z",
+          "n": 300
+        },
+        {
+          "minuto": "2026-11-09T01:56:00.000Z",
+          "n": 301
+        },
+        {
+          "minuto": "2026-11-09T01:57:00.000Z",
+          "n": 300
+        },
+        {
+          "minuto": "2026-11-09T01:58:00.000Z",
+          "n": 54
+        }
+      ]
+    },
+    "consumidor": {
+      "funcao": "sce-consumidor",
+      "invocacoes": 1967,
+      "erros": 534,
+      "throttles": 0,
+      "duracao_total_ms": 76820.62998368002,
+      "duracao_media_ms": 39.054717836136255,
+      "duracao_p95_ms": 93.62406687917041,
+      "concorrencia_pico": 4,
+      "async_recebidos": 1435,
+      "async_descartados": 2,
+      "async_idade_max_ms": 200318,
+      "invocacoes_por_minuto": [
+        {
+          "minuto": "2026-11-09T01:53:00.000Z",
+          "n": 180
+        },
+        {
+          "minuto": "2026-11-09T01:54:00.000Z",
+          "n": 300
+        },
+        {
+          "minuto": "2026-11-09T01:55:00.000Z",
+          "n": 422
+        },
+        {
+          "minuto": "2026-11-09T01:56:00.000Z",
+          "n": 462
+        },
+        {
+          "minuto": "2026-11-09T01:57:00.000Z",
+          "n": 465
+        },
+        {
+          "minuto": "2026-11-09T01:58:00.000Z",
+          "n": 129
+        },
+        {
+          "minuto": "2026-11-09T01:59:00.000Z",
+          "n": 9
+        }
+      ]
+    },
+    "gravados_s3": 1433,
+    "fator_multiplicacao": 1.371,
+    "fator_estado_estavel": 1,
+    "fator_vs_estado_estavel": 1.371,
+    "invocacoes_b_pico_min": 465,
+    "fator_pico_minuto": 1.55,
+    "throttles_a": 0,
+    "throttles_b": 0,
+    "concorrencia_pico_b": 4,
+    "eventos_descartados_b": 2,
+    "custo": {
+      "requests_lambda": 3402,
+      "gb_segundos": 14.3502,
+      "puts_s3": 1433,
+      "custo_janela_usd": 0.00803674,
+      "custo_hora_usd": 0.06195356,
+      "obs": "estimativa sem free tier; preços us-east-1 arm64"
+    },
+    "custo_por_pedido_usd": 0.0000056005,
+    "custo_por_pedido_vs_estado_estavel": 1.01,
+    "custo_hora_vs_estado_estavel": 3.1,
+    "alarmes": {
+      "sce-invocacoes-b-alto": {
+        "disparou": true,
+        "instante": "2026-11-09T01:55:07.085Z",
+        "segundos_desde_injecao": 60.5
+      },
+      "sce-amplificacao-b": {
+        "disparou": true,
+        "instante": "2026-11-09T01:58:00.597Z",
+        "segundos_desde_injecao": 234
+      },
+      "sce-erro-a-alto": {
+        "disparou": false,
+        "instante": null,
+        "segundos_desde_injecao": null
+      }
+    },
+    "tempo_ate_alarme_custo_s": 60.5,
+    "parado_por_condicao": false,
+    "hipotese_confirmada": true
+  }
+}
