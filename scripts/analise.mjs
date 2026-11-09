@@ -23,15 +23,17 @@ export const SAIDA_TEMPLATE = {
 
 const seg = (a, b) => (a == null || b == null ? null : Number(((new Date(b) - new Date(a)) / 1000).toFixed(1)));
 
-/** Execução da automação SSM disparada pelo experimento (pela janela de tempo). */
-async function execucaoAutomacao(prefixoDocumento, inicioExp) {
+/** Execução da automação SSM disparada pelo experimento FIS.
+ *  O FIS inicia pelo ARN do documento (DocumentName = ARN) e com a sessão
+ *  assumed-role/<papel>/<id do experimento> — correlação exata via ExecutedBy. */
+async function execucaoAutomacao(prefixoDocumento, inicioExp, experimentoId) {
   const r = await ssm.send(new DescribeAutomationExecutionsCommand({
-    Filters: [
-      { Key: 'DocumentNamePrefix', Values: [prefixoDocumento] },
-      { Key: 'StartTimeAfter', Values: [iso(new Date(inicioExp).getTime() - 30000)] },
-    ],
+    Filters: [{ Key: 'StartTimeAfter', Values: [iso(new Date(inicioExp).getTime() - 30000)] }],
   }));
-  const ex = (r.AutomationExecutionMetadataList || []).sort((x, y) => x.ExecutionStartTime - y.ExecutionStartTime)[0];
+  const ex = (r.AutomationExecutionMetadataList || [])
+    .filter((x) => x.DocumentName?.split('/').pop().startsWith(prefixoDocumento))
+    .filter((x) => !experimentoId || x.ExecutedBy?.endsWith(`/${experimentoId}`))
+    .sort((x, y) => x.ExecutionStartTime - y.ExecutionStartTime)[0];
   if (!ex) return null;
   const det = (await ssm.send(new GetAutomationExecutionCommand({ AutomationExecutionId: ex.AutomationExecutionId }))).AutomationExecution;
   const passos = Object.fromEntries((det.StepExecutions || []).map((s) => [s.StepName, {
@@ -71,7 +73,7 @@ export async function cloudTrailDataEvents(bucket, conta, inicio, fim, filtro) {
 // ---------------------------------------------------------------- E1
 async function analisarE1(bruto, saidas) {
   const POLITICA = 'sce-e1-permissiva';
-  const auto = await execucaoAutomacao('sce-e1', bruto.inicio);
+  const auto = await execucaoAutomacao('sce-e1', bruto.inicio, bruto.experimento_id);
   const tInjecao = auto?.passos?.AnexarPolitica?.fim ?? null;
   const tRollback = auto?.passos?.RemoverPolitica?.fim ?? null;
   const fimBusca = Date.now();
@@ -197,7 +199,7 @@ async function analisarE3(bruto) {
 
 // ---------------------------------------------------------------- E2
 async function analisarE2(bruto, saidas) {
-  const auto = await execucaoAutomacao('sce-e2', bruto.inicio);
+  const auto = await execucaoAutomacao('sce-e2', bruto.inicio, bruto.experimento_id);
   const passo = auto?.passos?.InjetarPayloadsAdulterados;
   const res = auto?.saidas?.['InjetarPayloadsAdulterados.Resultado']?.[0];
   const resultado = typeof res === 'string' ? jsonSeguro(res) ?? res : res;

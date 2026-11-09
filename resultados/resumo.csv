@@ -1,0 +1,2 @@
+experimento,rodada,arquivo,estado_fis,hipotese_confirmada,detectado,tempo_deteccao_s,mttd_s,acesso_indevido,rollback_ok,taxa_rejeicao_pct,objetos_indevidos_s3,fator_b_sobre_a,throttles_a,throttles_b,pico_concorrencia_b,custo_janela_usd,custo_hora_usd,custo_pedido_vs_estavel
+E1,1,E1-r1-2026-11-09T00-47-45-405Z.json,completed,true,true,3,3,true,true,,,,,,,,,

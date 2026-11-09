@@ -1,0 +1,2 @@
+Id,Hipotese confirmada,Detectado,Tempo de deteccao,Observacao
+E1,1/1,1/1,"3,0 s","Acesso indevido bem-sucedido em 1/1; rollback ok em 1/1; detecção antes do rollback em 1/1; janela de exposição 81,9 s"
