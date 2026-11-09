@@ -1,0 +1,60 @@
+# E2 - Integridade: B recebe eventos adulterados (como se A estivesse comprometida).
+# Incluido no template.yaml via AWS::Include (conteudo do AWS::SSM::Document).
+# Sem estado a reverter: os payloads so geram rejeicoes/logs; nada e alterado na infraestrutura.
+description: >-
+  SCE E2 - invoca B de forma assincrona (como A) com payloads adulterados de 3 tipos:
+  campo extra malicioso, tipo errado e valor fora da faixa.
+schemaVersion: '0.3'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  AutomationAssumeRole:
+    type: String
+  FuncaoB:
+    type: String
+    default: sce-consumidor
+  PorTipo:
+    type: String
+    default: '10'
+    description: Quantidade de payloads por tipo de adulteracao
+mainSteps:
+  - name: InjetarPayloadsAdulterados
+    action: aws:executeScript
+    timeoutSeconds: 120
+    inputs:
+      Runtime: python3.11
+      Handler: adulterar
+      InputPayload:
+        FuncaoB: '{{ FuncaoB }}'
+        PorTipo: '{{ PorTipo }}'
+        Marca: '{{ automation:EXECUTION_ID }}'
+      Script: |-
+        def adulterar(events, context):
+            import boto3, json, datetime
+            lam = boto3.client('lambda')
+            marca = events['Marca'].replace('-', '')[:8]
+            n = int(events['PorTipo'])
+            agora = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            aceitos = {}
+            for tipo in ['extra', 'tipo', 'faixa']:
+                for i in range(n):
+                    p = {'pedido_id': f'e2-{tipo}-{i}-{marca}', 'valor': 10.0,
+                         'cliente': 'cliente-e2', 'emitido_em': agora}
+                    if tipo == 'extra':
+                        p['is_admin'] = True
+                        p['destino'] = 's3://bucket-do-atacante/exfil/'
+                    elif tipo == 'tipo':
+                        p['valor'] = '10.00'
+                    else:
+                        p['valor'] = 99999999.0
+                    r = lam.invoke(FunctionName=events['FuncaoB'], InvocationType='Event',
+                                   Payload=json.dumps(p).encode())
+                    if r['StatusCode'] == 202:
+                        aceitos[tipo] = aceitos.get(tipo, 0) + 1
+            return {'marca': marca, 'aceitos_para_entrega': aceitos, 'por_tipo': n}
+    outputs:
+      - Name: Resultado
+        Selector: $.Payload
+        Type: StringMap
+    isEnd: true
+outputs:
+  - InjetarPayloadsAdulterados.Resultado

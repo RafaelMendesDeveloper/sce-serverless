@@ -19,8 +19,8 @@ Parameters:
     Description: MaximumRetryAttempts da invocacao assincrona de B
   LimiteInvocacoesBMin:
     Type: Number
-    Default: 120
-    Description: Alarme de custo - invocacoes de B por minuto (estado estavel ~60/min)
+    Default: 450
+    Description: Alarme de custo - invocacoes de B por minuto (1,5x a rajada de 5 req/s = 300/min)
   LimiteErroAPct:
     Type: Number
     Default: 5
@@ -313,9 +313,55 @@ Resources:
               Dimensions: [{ Name: FunctionName, Value: sce-produtor }]
             Period: 60
             Stat: Sum
+        # Throttles nao entram em Invocations nem em Errors, mas sao indisponibilidade de A
+        - Id: thr
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Throttles
+              Dimensions: [{ Name: FunctionName, Value: sce-produtor }]
+            Period: 60
+            Stat: Sum
         - Id: taxa
-          Label: TaxaErroA
-          Expression: 'IF(invs > 0, 100 * erros / invs, 0)'
+          Label: TaxaFalhaA
+          Expression: 'IF((invs + thr) > 0, 100 * (erros + thr) / (invs + thr), 0)'
+          ReturnData: true
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # Amplificacao por retries: invocacoes de B / invocacoes de A (estado estavel = 1,0)
+  AmplificacaoBAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: sce-amplificacao-b
+      AlarmDescription: Invocacoes de B mais de 1,5x as de A - retries multiplicando custo (E3)
+      EvaluationPeriods: 1
+      Threshold: 1.5
+      ComparisonOperator: GreaterThanThreshold
+      TreatMissingData: notBreaching
+      AlarmActions: [!Ref AlertasTopic]
+      Metrics:
+        - Id: invb
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions: [{ Name: FunctionName, Value: sce-consumidor }]
+            Period: 60
+            Stat: Sum
+        - Id: inva
+          ReturnData: false
+          MetricStat:
+            Metric:
+              Namespace: AWS/Lambda
+              MetricName: Invocations
+              Dimensions: [{ Name: FunctionName, Value: sce-produtor }]
+            Period: 60
+            Stat: Sum
+        - Id: razao
+          Label: AmplificacaoB
+          Expression: 'IF(inva > 0, invb / inva, 0)'
           ReturnData: true
       Tags: [{ Key: projeto, Value: sce-artigo }]
 
@@ -503,9 +549,14 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
+              # StartAutomationExecution e avaliado contra document/, automation-definition/
+              # e automation-execution/ (confirmado nos AccessDenied do CloudTrail)
               - Effect: Allow
                 Action: ssm:StartAutomationExecution
-                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/sce-*'
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/sce-*'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/sce-*'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:automation-execution/*'
               - Effect: Allow
                 Action: [ssm:GetAutomationExecution, ssm:StopAutomationExecution]
                 Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:automation-execution/*'
@@ -531,11 +582,153 @@ Resources:
           Parameters:
             documentArn: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${E1Document}'
             documentParameters: !Sub >-
-              {"AutomationAssumeRole":"${E1AutomationRole.Arn}","BucketSensivel":"${SensivelBucket}","JanelaExposicao":"PT2M"}
+              {"AutomationAssumeRole":"${E1AutomationRole.Arn}","BucketSensivel":"${SensivelBucket}","JanelaExposicao":"PT1M"}
             maxDuration: PT5M
       Tags:
         projeto: sce-artigo
         experimento: E1
+
+  # ================================================================ E3 - Denial of Wallet
+  # Permissoes exigidas pelas acoes aws:lambda:* (doc: fis-actions-reference / use-lambda-actions)
+  FisLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sce-fis-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: fis.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: { aws:SourceAccount: !Ref AWS::AccountId }
+      Policies:
+        - PolicyName: fis-lambda-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject, s3:DeleteObject]
+                Resource: !Sub '${FisConfigBucket.Arn}/FisConfigs/*'
+              - Effect: Allow
+                Action: lambda:GetFunction
+                Resource: !GetAtt ConsumidorFunction.Arn
+              - Effect: Allow
+                Action: tag:GetResources
+                Resource: '*'
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  E3Erro50Template:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: SCE E3 - B falha em 50% das invocacoes por 3 min
+      RoleArn: !GetAtt FisLambdaRole.Arn
+      StopConditions:
+        - { Source: aws:cloudwatch:alarm, Value: !GetAtt ErroAAlarm.Arn }
+      Targets:
+        consumidor:
+          ResourceType: aws:lambda:function
+          ResourceArns: [!GetAtt ConsumidorFunction.Arn]
+          SelectionMode: ALL
+      Actions:
+        erroB:
+          ActionId: aws:lambda:invocation-error
+          Parameters: { duration: PT3M, invocationPercentage: '50', preventExecution: 'true' }
+          Targets: { Functions: consumidor }
+      Tags: { projeto: sce-artigo, experimento: E3-erro-50 }
+
+  E3Erro100Template:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: SCE E3 - B falha em 100% das invocacoes por 3 min
+      RoleArn: !GetAtt FisLambdaRole.Arn
+      StopConditions:
+        - { Source: aws:cloudwatch:alarm, Value: !GetAtt ErroAAlarm.Arn }
+      Targets:
+        consumidor:
+          ResourceType: aws:lambda:function
+          ResourceArns: [!GetAtt ConsumidorFunction.Arn]
+          SelectionMode: ALL
+      Actions:
+        erroB:
+          ActionId: aws:lambda:invocation-error
+          Parameters: { duration: PT3M, invocationPercentage: '100', preventExecution: 'true' }
+          Targets: { Functions: consumidor }
+      Tags: { projeto: sce-artigo, experimento: E3-erro-100 }
+
+  # Atraso de 6 s > timeout de 5 s: cada invocacao vira timeout cobrado por 5 s e gera retry
+  E3AtrasoTemplate:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: SCE E3 - atraso de 6 s (acima do timeout) em 100% das invocacoes de B por 3 min
+      RoleArn: !GetAtt FisLambdaRole.Arn
+      StopConditions:
+        - { Source: aws:cloudwatch:alarm, Value: !GetAtt ErroAAlarm.Arn }
+      Targets:
+        consumidor:
+          ResourceType: aws:lambda:function
+          ResourceArns: [!GetAtt ConsumidorFunction.Arn]
+          SelectionMode: ALL
+      Actions:
+        atrasoB:
+          ActionId: aws:lambda:invocation-add-delay
+          Parameters: { duration: PT3M, invocationPercentage: '100', startupDelayMilliseconds: '6000' }
+          Targets: { Functions: consumidor }
+      Tags: { projeto: sce-artigo, experimento: E3-atraso }
+
+  # ================================================================ E2 - payload adulterado
+  E2Document:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: sce-e2-payload-adulterado
+      DocumentType: Automation
+      DocumentFormat: YAML
+      UpdateMethod: NewVersion
+      Content:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ssm/e2-payload-adulterado.yaml
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  E2AutomationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sce-e2-automacao-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ssm.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: { aws:SourceAccount: !Ref AWS::AccountId }
+      Policies:
+        - PolicyName: e2-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt ConsumidorFunction.Arn
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  E2ExperimentTemplate:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: SCE E2 - payloads adulterados enviados a B (SSM Automation)
+      RoleArn: !GetAtt FisSsmRole.Arn
+      StopConditions:
+        - { Source: aws:cloudwatch:alarm, Value: !GetAtt ErroAAlarm.Arn }
+      Targets: {}
+      Actions:
+        injetarPayloadAdulterado:
+          ActionId: aws:ssm:start-automation-execution
+          Parameters:
+            documentArn: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${E2Document}'
+            documentParameters: !Sub '{"AutomationAssumeRole":"${E2AutomationRole.Arn}","PorTipo":"10"}'
+            maxDuration: PT5M
+      Tags: { projeto: sce-artigo, experimento: E2 }
 
 Outputs:
   DadosBucket:
@@ -560,3 +753,11 @@ Outputs:
     Value: !GetAtt ErroAAlarm.Arn
   E1TemplateId:
     Value: !Ref E1ExperimentTemplate
+  E3Erro50TemplateId:
+    Value: !Ref E3Erro50Template
+  E3Erro100TemplateId:
+    Value: !Ref E3Erro100Template
+  E3AtrasoTemplateId:
+    Value: !Ref E3AtrasoTemplate
+  E2TemplateId:
+    Value: !Ref E2ExperimentTemplate

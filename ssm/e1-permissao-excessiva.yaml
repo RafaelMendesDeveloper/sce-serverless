@@ -82,11 +82,20 @@ mainSteps:
       Api: DeleteRolePolicy
       RoleName: '{{ RoleName }}'
       PolicyName: '{{ PolicyName }}'
+  # aws:sleep nao e permitido no fluxo de cancelamento (onCancel); executeScript e.
   - name: AguardarPropagacaoRollback
-    action: aws:sleep
+    action: aws:executeScript
     onFailure: Continue
+    isCritical: false
+    timeoutSeconds: 60
     inputs:
-      Duration: PT20S
+      Runtime: python3.11
+      Handler: esperar
+      Script: |-
+        def esperar(events, context):
+            import time
+            time.sleep(20)
+            return {'ok': True}
   # Verificacao do rollback: acesso deve voltar a ser negado
   - name: SondarDepois
     action: aws:invokeLambdaFunction

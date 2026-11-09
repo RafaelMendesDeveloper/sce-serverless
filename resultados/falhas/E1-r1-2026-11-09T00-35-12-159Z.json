@@ -1,0 +1,80 @@
+{
+  "experimento": "E1",
+  "rodada": 1,
+  "template_id": "EXT3VTEY319r3Hcfz",
+  "experimento_id": "EXPCWxwrGPJsEnwcWe",
+  "estado": {
+    "status": "failed",
+    "reason": "Unable to start SSM automation. Not enough privileges to perform the required action. Check that the experiment role grants required permissions to FIS.",
+    "error": {
+      "accountId": "337443953606",
+      "code": "AuthorizationFailure",
+      "location": "actions.injetarPermissaoExcessiva"
+    }
+  },
+  "pedido_inicio": "2026-11-09T00:35:12.159Z",
+  "inicio": "2026-11-09T00:35:13.255Z",
+  "fim": "2026-11-09T00:35:34.133Z",
+  "acoes": {
+    "injetarPermissaoExcessiva": {
+      "acao": "aws:ssm:start-automation-execution",
+      "estado": {
+        "status": "failed",
+        "reason": "Unable to start SSM automation. Not enough privileges to perform the required action. Check that the experiment role grants required permissions to FIS."
+      },
+      "inicio": "2026-11-09T00:35:33.512Z",
+      "fim": "2026-11-09T00:35:33.512Z",
+      "parametros": {
+        "documentArn": "arn:aws:ssm:us-east-1:337443953606:document/sce-e1-permissao-excessiva",
+        "documentParameters": "{\"AutomationAssumeRole\":\"arn:aws:iam::337443953606:role/sce-e1-automacao-role\",\"BucketSensivel\":\"sce-serverless-sensivelbucket-ovj8q8vf0vuv\",\"JanelaExposicao\":\"PT1M\"}",
+        "maxDuration": "PT5M"
+      }
+    }
+  },
+  "condicoes_parada": [
+    {
+      "source": "aws:cloudwatch:alarm",
+      "value": "arn:aws:cloudwatch:us-east-1:337443953606:alarm:sce-erro-a-alto"
+    }
+  ],
+  "cliente": {
+    "inicio": "2026-11-09T00:34:42.156Z",
+    "fim": "2026-11-09T00:36:41.437Z",
+    "taxa_alvo_rps": 1,
+    "duracao_alvo_s": 3600,
+    "enviados": 120,
+    "ok": 120,
+    "erro_funcao": 0,
+    "erro_api": 0,
+    "throttle_a": 0,
+    "taxa_real_rps": 1.006,
+    "latencia_cliente_media_ms": 368.6,
+    "latencia_cliente_p95_ms": 1259
+  },
+  "analise": {
+    "automacao": null,
+    "instante_injecao": null,
+    "instante_rollback": null,
+    "janela_exposicao_s": null,
+    "deteccao": {
+      "detectado": false,
+      "mttd_s": null,
+      "deteccao_rollback_s": null,
+      "eventos": []
+    },
+    "sondagem": {
+      "antes": null,
+      "durante": null,
+      "depois": null
+    },
+    "acesso_indevido_sucesso": false,
+    "acesso_visivel_logs_b": false,
+    "acesso_visivel_cloudtrail": false,
+    "cloudtrail_data_events": [],
+    "logs_b_sondagem": [],
+    "rollback_ok": false,
+    "politica_presente_apos": false,
+    "deteccao_antes_do_rollback": null,
+    "hipotese_confirmada": false
+  }
+}
