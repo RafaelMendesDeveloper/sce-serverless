@@ -1,2 +1,12 @@
 experimento,rodada,arquivo,estado_fis,hipotese_confirmada,detectado,tempo_deteccao_s,mttd_s,acesso_indevido,rollback_ok,taxa_rejeicao_pct,objetos_indevidos_s3,fator_b_sobre_a,throttles_a,throttles_b,pico_concorrencia_b,custo_janela_usd,custo_hora_usd,custo_pedido_vs_estavel
 E1,1,E1-r1-2026-11-09T00-47-45-405Z.json,completed,true,true,3,3,true,true,,,,,,,,,
+E1,2,E1-r2-2026-11-09T00-55-24-135Z.json,completed,true,true,2.1,2.1,true,true,,,,,,,,,
+E1,3,E1-r3-2026-11-09T01-03-12-894Z.json,completed,true,true,2.5,2.5,true,true,,,,,,,,,
+E2,1,E2-r1-2026-11-09T01-10-50-423Z.json,completed,true,true,87.3,,,,100,0,,,,,,,
+E2,2,E2-r2-2026-11-09T02-14-05-679Z.json,completed,true,true,72.3,,,,100,0,,,,,,,
+E2,3,E2-r3-2026-11-09T02-20-06-154Z.json,completed,true,true,71.7,,,,100,0,,,,,,,
+E3-atraso,1,E3-atraso-r1-2026-11-09T02-26-06-641Z.json,completed,true,true,47.6,,,,,,1.931,0,0,87,0.02012626,0.15209079,2.44
+E3-erro-100,1,E3-erro-100-r1-2026-11-09T01-28-46-730Z.json,completed,true,true,67.7,,,,,,1.946,0,0,7,0.00855016,0.06458553,1.04
+E3-erro-100,2,E3-erro-100-r2-2026-11-09T01-39-06-354Z.json,completed,true,true,48,,,,,,1.989,0,0,6,0.00847797,0.06400806,1.03
+E3-erro-100,3,E3-erro-100-r3-2026-11-09T02-03-44-935Z.json,completed,true,true,69.5,,,,,,1.941,0,0,6,0.00852465,0.06428412,1.03
+E3-erro-50,1,E3-erro-50-r1-2026-11-09T01-53-53-623Z.json,completed,true,true,60.5,,,,,,1.371,0,0,4,0.00803674,0.06195356,1.01

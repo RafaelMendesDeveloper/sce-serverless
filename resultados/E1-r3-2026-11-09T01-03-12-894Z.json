@@ -142,6 +142,11 @@
         "hora": "2026-11-09T01:03:47Z",
         "principal": "arn:aws:sts::337443953606:assumed-role/sce-consumidor-role/sce-consumidor",
         "erro": null
+      },
+      {
+        "hora": "2026-11-09T01:05:19Z",
+        "principal": "arn:aws:sts::337443953606:assumed-role/sce-consumidor-role/sce-consumidor",
+        "erro": "AccessDenied"
       }
     ],
     "logs_b_sondagem": [

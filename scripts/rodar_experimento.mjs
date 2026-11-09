@@ -8,7 +8,7 @@ import { args, REGIAO, saidasStack, salvarJson, sleep, iso } from './lib.mjs';
 import { gerarTrafego } from './trafego.mjs';
 import { ANALISES, SAIDA_TEMPLATE } from './analise.mjs';
 
-const a = args({ rodada: 1, taxa: 1, pre: 30, pos: 60, espera: 180 });
+const a = args({ rodada: 1, taxa: 1, pre: 30, pos: 60, espera: 180, cauda: 180 });
 if (!SAIDA_TEMPLATE[a.exp]) {
   console.error(`--exp deve ser um de: ${Object.keys(SAIDA_TEMPLATE).join(', ')}`);
   process.exit(1);
@@ -65,6 +65,7 @@ const bruto = {
     acao: v.actionId, estado: v.state, inicio: v.startTime && iso(v.startTime), fim: v.endTime && iso(v.endTime), parametros: v.parameters,
   }])),
   condicoes_parada: exp.stopConditions,
+  cauda_s: a.cauda, // janela extra de análise após o tráfego (retries/descartes assíncronos)
   cliente,
 };
 const nome = `${a.exp}-r${a.rodada}-${iso(pedido).replace(/[:.]/g, '-')}.json`;

@@ -38,7 +38,7 @@ const conta = (xs, pred) => `${xs.filter(pred).length}/${xs.length}`;
 
 const grupo = (prefixo) => execs.filter((e) => e.experimento === prefixo);
 const E1 = grupo('E1'), E2 = grupo('E2');
-const E3 = Object.fromEntries(['E3-erro-100', 'E3-erro-50', 'E3-atraso'].map((k) => [k, grupo(k)]));
+const E3 = Object.fromEntries(['E3-erro-100', 'E3-erro-50', 'E3-atraso', 'E3-atraso-rc'].map((k) => [k, grupo(k)]));
 
 // ---------------------------------------------------------------- tabela 2 (desenho)
 const tabela2 = [

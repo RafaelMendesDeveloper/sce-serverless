@@ -145,6 +145,8 @@
     "fator_multiplicacao": 1.946,
     "fator_estado_estavel": 1,
     "fator_vs_estado_estavel": 1.946,
+    "invocacoes_b_pico_min": 842,
+    "fator_pico_minuto": 2.81,
     "throttles_a": 0,
     "throttles_b": 0,
     "concorrencia_pico_b": 7,

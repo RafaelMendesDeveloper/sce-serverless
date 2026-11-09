@@ -19,6 +19,8 @@ export const SAIDA_TEMPLATE = {
   'E3-erro-50': 'E3Erro50TemplateId',
   'E3-erro-100': 'E3Erro100TemplateId',
   'E3-atraso': 'E3AtrasoTemplateId',
+  // mesmo template, executado com ConcorrenciaReservadaB=5 (controle de concorrência ativo)
+  'E3-atraso-rc': 'E3AtrasoTemplateId',
 };
 
 const seg = (a, b) => (a == null || b == null ? null : Number(((new Date(b) - new Date(a)) / 1000).toFixed(1)));
@@ -76,7 +78,8 @@ async function analisarE1(bruto, saidas) {
   const auto = await execucaoAutomacao('sce-e1', bruto.inicio, bruto.experimento_id);
   const tInjecao = auto?.passos?.AnexarPolitica?.fim ?? null;
   const tRollback = auto?.passos?.RemoverPolitica?.fim ?? null;
-  const fimBusca = Date.now();
+  // Limita a busca a esta rodada (fim do experimento + 5 min), sem pegar eventos das seguintes
+  const fimBusca = Math.min(Date.now(), new Date(bruto.fim).getTime() + 300000);
 
   // Detecção: eventos que o EventBridge entregou no log group de detecções.
   const det = (await eventosLog(saidas.DeteccoesLogGroup, '', new Date(bruto.inicio).getTime() - 60000, fimBusca))
@@ -155,7 +158,7 @@ async function analisarE3(bruto) {
   const fimFalha = acao?.fim ?? bruto.fim;
   // Janela: todo o tráfego + 3 min para os retries assíncronos (1 e 2 min após cada falha).
   const inicio = bruto.cliente.inicio;
-  const fim = new Date(new Date(bruto.cliente.fim).getTime() + 180000);
+  const fim = new Date(new Date(bruto.cliente.fim).getTime() + (bruto.cauda_s ?? 180) * 1000);
   const segundos = (fim - new Date(inicio)) / 1000;
 
   const A = await metricasFuncao('sce-produtor', inicio, fim);
