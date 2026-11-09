@@ -1,6 +1,7 @@
 Id,Hipotese confirmada,Detectado,Tempo de deteccao,Observacao
 E1,3/3,3/3,"2,5 ± 0,5 s","Acesso indevido bem-sucedido em 3/3; rollback ok em 3/3; detecção antes do rollback em 3/3; janela de exposição 81,8 ± 0,1 s"
 E2,3/3,3/3,"77,1 ± 8,8 s (alarme)","Rejeição 100,0 ± 0,0%; objetos indevidos no S3: 0/0/0"
-E3-erro-100,3/3,3/3,"61,7 ± 11,9 s (alarme de custo)","Fator B/A 1,96 ± 0,03 (pico por minuto 2,74 ± 0,12) (estado estável 1,00); custo/pedido 1,03 ± 0,01× o estável; throttles A/B 0/0, 0/0, 0/0; pico de concorrência 7/6/6"
-E3-erro-50,1/1,1/1,"60,5 s (alarme de custo)","Fator B/A 1,37 (pico por minuto 1,55) (estado estável 1,00); custo/pedido 1,01× o estável; throttles A/B 0/0; pico de concorrência 4"
-E3-atraso,1/1,1/1,"47,6 s (alarme de custo)","Fator B/A 1,93 (pico por minuto 2,39) (estado estável 1,00); custo/pedido 2,44× o estável; throttles A/B 0/0; pico de concorrência 87"
+E3-erro-100,3/3,3/3,"61,7 ± 11,9 s (alarme de custo)","Fator B/A 1,96 ± 0,03 (pico por minuto 2,74 ± 0,12) (estado estável 1,00); custo/pedido 1,03 ± 0,01× o estável; throttles A/B 0/0, 0/0, 0/0; pico de concorrência 7/6/6; idade máx. do evento 202/201/202 s; descartados 2/13/4"
+E3-erro-50,1/1,1/1,"60,5 s (alarme de custo)","Fator B/A 1,37 (pico por minuto 1,55) (estado estável 1,00); custo/pedido 1,01× o estável; throttles A/B 0/0; pico de concorrência 4; idade máx. do evento 200 s; descartados 2"
+E3-atraso,1/1,1/1,"47,6 s (alarme de custo)","Fator B/A 1,93 (pico por minuto 2,39) (estado estável 1,00); custo/pedido 2,44× o estável; throttles A/B 0/0; pico de concorrência 87; idade máx. do evento 212 s; descartados 0"
+E3-atraso-rc,0/1,1/1,"241,6 s (alarme de custo)","Fator B/A 1,08 (pico por minuto 3,25) (estado estável 1,00); custo/pedido 1,12× o estável; throttles A/B 0/2366; pico de concorrência 5; idade máx. do evento 492 s; descartados 0"

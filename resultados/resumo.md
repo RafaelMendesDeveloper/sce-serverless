@@ -1,6 +1,6 @@
 # Resultados — Security Chaos Engineering em ambiente serverless
 
-Gerado em 2026-11-09T02:38:28.244Z a partir de 11 execuções em `resultados/`. Média ± desvio-padrão amostral quando há ≥ 3 rodadas; valores individuais separados por "/" caso contrário.
+Gerado em 2026-11-09T02:54:43.891Z a partir de 12 execuções em `resultados/`. Média ± desvio-padrão amostral quando há ≥ 3 rodadas; valores individuais separados por "/" caso contrário.
 
 ## Tabela 2 — Desenho dos experimentos
 
@@ -16,9 +16,10 @@ Gerado em 2026-11-09T02:38:28.244Z a partir de 11 execuções em `resultados/`. 
 | --- | --- | --- | --- | --- |
 | E1 | 3/3 | 3/3 | 2,5 ± 0,5 s | Acesso indevido bem-sucedido em 3/3; rollback ok em 3/3; detecção antes do rollback em 3/3; janela de exposição 81,8 ± 0,1 s |
 | E2 | 3/3 | 3/3 | 77,1 ± 8,8 s (alarme) | Rejeição 100,0 ± 0,0%; objetos indevidos no S3: 0/0/0 |
-| E3-erro-100 | 3/3 | 3/3 | 61,7 ± 11,9 s (alarme de custo) | Fator B/A 1,96 ± 0,03 (pico por minuto 2,74 ± 0,12) (estado estável 1,00); custo/pedido 1,03 ± 0,01× o estável; throttles A/B 0/0, 0/0, 0/0; pico de concorrência 7/6/6 |
-| E3-erro-50 | 1/1 | 1/1 | 60,5 s (alarme de custo) | Fator B/A 1,37 (pico por minuto 1,55) (estado estável 1,00); custo/pedido 1,01× o estável; throttles A/B 0/0; pico de concorrência 4 |
-| E3-atraso | 1/1 | 1/1 | 47,6 s (alarme de custo) | Fator B/A 1,93 (pico por minuto 2,39) (estado estável 1,00); custo/pedido 2,44× o estável; throttles A/B 0/0; pico de concorrência 87 |
+| E3-erro-100 | 3/3 | 3/3 | 61,7 ± 11,9 s (alarme de custo) | Fator B/A 1,96 ± 0,03 (pico por minuto 2,74 ± 0,12) (estado estável 1,00); custo/pedido 1,03 ± 0,01× o estável; throttles A/B 0/0, 0/0, 0/0; pico de concorrência 7/6/6; idade máx. do evento 202/201/202 s; descartados 2/13/4 |
+| E3-erro-50 | 1/1 | 1/1 | 60,5 s (alarme de custo) | Fator B/A 1,37 (pico por minuto 1,55) (estado estável 1,00); custo/pedido 1,01× o estável; throttles A/B 0/0; pico de concorrência 4; idade máx. do evento 200 s; descartados 2 |
+| E3-atraso | 1/1 | 1/1 | 47,6 s (alarme de custo) | Fator B/A 1,93 (pico por minuto 2,39) (estado estável 1,00); custo/pedido 2,44× o estável; throttles A/B 0/0; pico de concorrência 87; idade máx. do evento 212 s; descartados 0 |
+| E3-atraso-rc | 0/1 | 1/1 | 241,6 s (alarme de custo) | Fator B/A 1,08 (pico por minuto 3,25) (estado estável 1,00); custo/pedido 1,12× o estável; throttles A/B 0/2366; pico de concorrência 5; idade máx. do evento 492 s; descartados 0 |
 
 ## Estado estável (linha de base)
 
@@ -51,13 +52,16 @@ Janela de 10 min a 1 req/s; fator B/A 1,00; rejeições 0; gravados 600; latênc
 
 ## E3 — Denial of Wallet (por execução)
 
-| Variante | Rodada | Inv. A | Inv. B | Fator B/A | Fator pico/min | Throttles A/B | Pico conc. B | Descartados B | Custo janela (US$) | Custo/h (US$) | Custo/pedido vs estável | Alarme invoc. (s) | Alarme amplif. (s) | Estado FIS |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| E3-erro-100 | 1 | 1483 | 2886 | 1,95 | 2,81 | 0/0 | 7 | 2 | 0.00855 | 0.0646 | 1,04× | 67,7 | 121,2 | completed |
-| E3-erro-100 | 2 | 1484 | 2952 | 1,99 | 2,61 | 0/0 | 6 | 13 | 0.00848 | 0.0640 | 1,03× | 48,0 | 101,5 | completed |
-| E3-erro-100 | 3 | 1486 | 2884 | 1,94 | 2,81 | 0/0 | 6 | 4 | 0.00852 | 0.0643 | 1,03× | 69,5 | 122,9 | completed |
-| E3-erro-50 | 1 | 1435 | 1967 | 1,37 | 1,55 | 0/0 | 4 | 2 | 0.00804 | 0.0620 | 1,01× | 60,5 | 234,0 | completed |
-| E3-atraso | 1 | 1482 | 2862 | 1,93 | 2,39 | 0/0 | 87 | 0 | 0.02013 | 0.1521 | 2,44× | 47,6 | 161,2 | completed |
+| Variante | Rodada | Inv. A | Inv. B | Fator B/A | Fator pico/min | Throttles A/B | Pico conc. B | Descartados B | Idade máx. evento (s) | Custo janela (US$) | Custo/h (US$) | Custo/pedido vs estável | Alarme invoc. (s) | Alarme amplif. (s) | Estado FIS |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| E3-erro-100 | 1 | 1483 | 2886 | 1,95 | 2,81 | 0/0 | 7 | 2 | 202 | 0.00855 | 0.0646 | 1,04× | 67,7 | 121,2 | completed |
+| E3-erro-100 | 2 | 1484 | 2952 | 1,99 | 2,61 | 0/0 | 6 | 13 | 201 | 0.00848 | 0.0640 | 1,03× | 48,0 | 101,5 | completed |
+| E3-erro-100 | 3 | 1486 | 2884 | 1,94 | 2,81 | 0/0 | 6 | 4 | 202 | 0.00852 | 0.0643 | 1,03× | 69,5 | 122,9 | completed |
+| E3-erro-50 | 1 | 1435 | 1967 | 1,37 | 1,55 | 0/0 | 4 | 2 | 200 | 0.00804 | 0.0620 | 1,01× | 60,5 | 234,0 | completed |
+| E3-atraso | 1 | 1482 | 2862 | 1,93 | 2,39 | 0/0 | 87 | 0 | 212 | 0.02013 | 0.1521 | 2,44× | 47,6 | 161,2 | completed |
+| E3-atraso-rc | 1 | 1481 | 1593 | 1,08 | 3,25 | 0/2366 | 5 | 0 | 492 | 0.00922 | 0.0347 | 1,12× | 248,1 | 241,6 | completed |
+
+Variantes: `E3-erro-*` rodaram sob a cota inicial da conta (10 execuções concorrentes, compartilhadas entre A e B); `E3-atraso` rodou após a aprovação da cota (1000) **sem** concorrência reservada; `E3-atraso-rc` repetiu o atraso **com** `ReservedConcurrentExecutions = 5` em B.
 
 Obs.: o AWS Budgets não é atualizado em tempo real; ele foi mantido como controle de segunda linha e não foi usado como métrica.
 

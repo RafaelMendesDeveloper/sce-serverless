@@ -56,6 +56,10 @@ gerador de tráfego ──Invoke──▶ Lambda A (produtor) ──Invoke assí
   - número de objetos `dados/e2-*-<marca>.json` no S3 (o esperado é 0);
   - transição do alarme `sce-rejeicao-payload` para ALARM e o tempo desde o início da injeção.
 - **Rollback.** Não há estado a reverter: os eventos adulterados apenas geram rejeições e logs. O tráfego legítimo de fundo continua sendo gravado normalmente.
+- **Resultados (n = 3, após a correção descrita abaixo).**
+  - B rejeitou 100% dos 90 eventos adulterados, com o motivo correto em cada tipo: `campo_extra:is_admin,destino`, `tipo_invalido:valor` e `fora_da_faixa:valor`.
+  - Nenhum objeto indevido foi gravado no S3 (0/0/0).
+  - A primeira rejeição ocorreu cerca de 2 s após a injeção, e o alarme disparou em **77,1 ± 8,8 s**, latência dominada pelo período de 1 min da métrica e do alarme.
 - **Achado (falha do controle revelada pelo experimento).** Na primeira bateria, o alarme de rejeição disparou na rodada 1 e não voltou mais para OK. O metric filter não tinha `DefaultValue`, então a métrica era esparsa: sem pontos novos, o CloudWatch manteve o último estado, ALARM. Com isso, as rodadas 2 e 3 não geraram nenhum alerta novo, embora B tenha rejeitado 30/30 eventos em cada uma. Em produção, isso significa que **apenas o primeiro ataque seria notificado**. A correção foi `DefaultValue: 0`, que publica 0 a cada log não casado, e as rodadas 2 e 3 foram refeitas. As execuções descartadas estão em `resultados/falhas/`.
 
 ## 4. E3 — Disponibilidade: Denial of Wallet
@@ -75,7 +79,25 @@ gerador de tráfego ──Invoke──▶ Lambda A (produtor) ──Invoke assí
 
   O AWS Budgets fica registrado como controle de segunda linha e não é usado como métrica, pois tem atraso de horas.
 - **Rollback.** O próprio FIS remove a configuração de falha do bucket S3 de configuração ao fim da ação. A extensão deixa de injetar em até cerca de 20 s, o intervalo de *hot polling*. A condição de parada interrompe o experimento se a taxa de falha de A passar de 5%.
-- **Limitação.** A conta nova tinha cota de 10 execuções concorrentes de Lambda, e a AWS exige uma reserva mínima não reservada. Por isso, não foi possível configurar concorrência reservada em B enquanto o aumento de cota não foi aprovado. O teto efetivo é o limite da conta (10), compartilhado entre A e B. Esse é exatamente o cenário de *noisy neighbor*: a degradação de B pode consumir a concorrência de A, e por isso os throttles de A entram na condição de parada.
+- **Cota de concorrência e variantes.** A conta nova tinha cota de 10 execuções concorrentes de Lambda, e a AWS exige uma sobra mínima de concorrência não reservada. Por isso, não foi possível reservar concorrência em B no início. As variantes `E3-erro-*` rodaram sob esse teto de 10, compartilhado entre A e B. A cota foi elevada para 1000 durante a bateria. A partir daí, `E3-atraso` rodou **sem** limite efetivo, e `E3-atraso-rc` repetiu o mesmo atraso **com** `ReservedConcurrentExecutions = 5` em B. Os throttles de A entram na condição de parada justamente para capturar o efeito *noisy neighbor*, em que a degradação de B consome a concorrência de A.
+
+### 4.1 Resultados e discussão do E3
+
+- **Erro rápido** (`invocation-error`, `preventExecution = true`).
+  - O fator B/A subiu de 1,00 para 1,96 ± 0,03 na janela inteira (100%, n = 3). No pior minuto, chegou a 2,74 ± 0,12×, próximo do teórico de 3× (1 tentativa + 2 retries).
+  - Com 50% de falha, o fator foi 1,37 (pico de 1,55×; teórico: 1 + 0,5 + 0,25 = 1,75×).
+  - O custo por pedido mal mudou (1,01–1,04×), porque uma invocação que falha antes de executar dura poucos milissegundos.
+  - Poucos eventos foram descartados, pois os retries tardios (até cerca de 3,4 min) caíram depois do fim da falha.
+  - O alarme absoluto de invocações foi o sinal mais rápido: 61,7 ± 11,9 s com 100% e 60,5 s com 50%. O alarme de amplificação demorou mais, porque os retries chegam com atraso de 1 a 2 min. Com 50%, ele quase não cruzou o limiar de 1,5.
+- **Falha lenta** (`invocation-add-delay` de 6 s, acima do timeout de 5 s). É aqui que o *Denial of Wallet* aparece.
+  - Sem limite de concorrência, B escalou até 87 execuções simultâneas e consumiu 889 GB-s, contra cerca de 18 no erro rápido.
+  - O custo por pedido chegou a 2,44× e o custo/hora a 7,6× o estado estável.
+  - O alarme de invocações disparou em 47,6 s.
+- **Mesma falha lenta com concorrência reservada = 5.**
+  - O pico ficou em 5 e o consumo caiu para 90 GB-s (−90%). O custo por pedido ficou em 1,12×, e nenhum pedido foi perdido: 1.481/1.481 gravados, 0 descartados.
+  - Houve dois efeitos colaterais. (i) B sofreu 2.366 throttles, e os eventos represados na fila assíncrona atingiram 492 s de idade, perto do `MaximumEventAgeInSeconds` de 600 s. Uma falha um pouco mais longa resultaria em **descarte silencioso de eventos**. (ii) Throttle não conta como invocação, então os alarmes de custo **só dispararam quando a fila drenou**, cerca de 4 min após a injeção e depois do fim da falha.
+  - Em resumo, o controle preventivo de custo funcionou, mas reduziu a observabilidade do controle detectivo. Daí a recomendação de alarmar também `Throttles` e `AsyncEventAge` de B e de configurar um destino `OnFailure`/DLQ para os eventos descartados.
+- **Avaliação da hipótese.** Ela é confirmada para as variantes sem reserva: houve amplificação e o alarme disparou antes do fim da falha. Na variante com reserva, é **parcialmente confirmada**: o limite de concorrência conteve o pico e o custo, mas o alarme chegou tarde. Em nenhuma variante a condição de parada foi acionada, porque A não sofreu erros nem throttles.
 
 ## 5. Ameaças à validade
 
