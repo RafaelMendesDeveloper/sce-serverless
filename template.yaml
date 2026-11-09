@@ -444,6 +444,99 @@ Resources:
             ThresholdType: PERCENTAGE
           Subscribers: [{ SubscriptionType: EMAIL, Address: !Ref AlertEmail }]
 
+  # ================================================================ E1 - permissao excessiva
+  E1Document:
+    Type: AWS::SSM::Document
+    Properties:
+      Name: sce-e1-permissao-excessiva
+      DocumentType: Automation
+      DocumentFormat: YAML
+      UpdateMethod: NewVersion
+      Content:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ssm/e1-permissao-excessiva.yaml
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # Papel assumido pela automacao do E1: so mexe em politica inline do papel de B e invoca B
+  E1AutomationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sce-e1-automacao-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: ssm.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: { aws:SourceAccount: !Ref AWS::AccountId }
+      Policies:
+        - PolicyName: e1-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [iam:PutRolePolicy, iam:DeleteRolePolicy, iam:GetRolePolicy]
+                Resource: !GetAtt ConsumidorRole.Arn
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt ConsumidorFunction.Arn
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  # Papel do FIS para os experimentos orquestrados via SSM Automation (E1 e E2)
+  FisSsmRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sce-fis-ssm-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: fis.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals: { aws:SourceAccount: !Ref AWS::AccountId }
+      Policies:
+        - PolicyName: fis-ssm-minimo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: ssm:StartAutomationExecution
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:automation-definition/sce-*'
+              - Effect: Allow
+                Action: [ssm:GetAutomationExecution, ssm:StopAutomationExecution]
+                Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:automation-execution/*'
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/sce-e*-automacao-role'
+                Condition:
+                  StringEquals: { iam:PassedToService: ssm.amazonaws.com }
+      Tags: [{ Key: projeto, Value: sce-artigo }]
+
+  E1ExperimentTemplate:
+    Type: AWS::FIS::ExperimentTemplate
+    Properties:
+      Description: SCE E1 - permissao excessiva no papel de B (SSM Automation)
+      RoleArn: !GetAtt FisSsmRole.Arn
+      StopConditions:
+        - Source: aws:cloudwatch:alarm
+          Value: !GetAtt ErroAAlarm.Arn
+      Targets: {}
+      Actions:
+        injetarPermissaoExcessiva:
+          ActionId: aws:ssm:start-automation-execution
+          Parameters:
+            documentArn: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:document/${E1Document}'
+            documentParameters: !Sub >-
+              {"AutomationAssumeRole":"${E1AutomationRole.Arn}","BucketSensivel":"${SensivelBucket}","JanelaExposicao":"PT2M"}
+            maxDuration: PT5M
+      Tags:
+        projeto: sce-artigo
+        experimento: E1
+
 Outputs:
   DadosBucket:
     Value: !Ref DadosBucket
@@ -465,3 +558,5 @@ Outputs:
     Value: !Ref DeteccoesLogGroup
   ErroAAlarmArn:
     Value: !GetAtt ErroAAlarm.Arn
+  E1TemplateId:
+    Value: !Ref E1ExperimentTemplate

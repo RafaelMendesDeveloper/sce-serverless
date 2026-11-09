@@ -19,7 +19,8 @@ const pct = (xs, p) => {
 };
 
 /** Gera tráfego e devolve o resumo do lado do cliente. */
-export async function gerarTrafego({ taxa = 1, duracao = 60, invalidos = 0, funcao = 'sce-produtor', silencioso = false } = {}) {
+// `controle.parar = true` encerra o tráfego antes da duração (usado durante experimentos).
+export async function gerarTrafego({ taxa = 1, duracao = 60, invalidos = 0, funcao = 'sce-produtor', silencioso = false, controle } = {}) {
   const intervalo = 1000 / taxa;
   const total = Math.round(taxa * duracao);
   const inicio = Date.now();
@@ -27,7 +28,8 @@ export async function gerarTrafego({ taxa = 1, duracao = 60, invalidos = 0, func
   let ok = 0, erroFuncao = 0, erroApi = 0, throttle = 0;
   const pendentes = [];
 
-  for (let k = 0; k < total; k++) {
+  let enviados = 0;
+  for (let k = 0; k < total && !controle?.parar; k++, enviados++) {
     const alvo = inicio + k * intervalo;
     const espera = alvo - Date.now();
     if (espera > 0) await sleep(espera);
@@ -49,8 +51,8 @@ export async function gerarTrafego({ taxa = 1, duracao = 60, invalidos = 0, func
   const fim = Date.now();
   return {
     inicio: iso(inicio), fim: iso(fim), taxa_alvo_rps: taxa, duracao_alvo_s: duracao,
-    enviados: total, ok, erro_funcao: erroFuncao, erro_api: erroApi, throttle_a: throttle,
-    taxa_real_rps: Number((total / ((fim - inicio) / 1000)).toFixed(3)),
+    enviados, ok, erro_funcao: erroFuncao, erro_api: erroApi, throttle_a: throttle,
+    taxa_real_rps: Number((enviados / ((fim - inicio) / 1000)).toFixed(3)),
     latencia_cliente_media_ms: lat.length ? Number((lat.reduce((a, b) => a + b, 0) / lat.length).toFixed(1)) : null,
     latencia_cliente_p95_ms: lat.length ? Number(pct(lat, 95).toFixed(1)) : null,
   };

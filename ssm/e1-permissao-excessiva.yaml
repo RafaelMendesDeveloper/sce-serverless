@@ -1,0 +1,103 @@
+# E1 - Confidencialidade: permissao excessiva no papel de B.
+# Incluido no template.yaml via AWS::Include (conteudo do AWS::SSM::Document).
+# Rollback garantido: todo passo apos a injecao tem onFailure/onCancel -> RemoverPolitica.
+description: >-
+  SCE E1 - anexa politica inline permissiva (s3:* em *) ao papel de B, sonda acesso
+  a um bucket fora do escopo, espera a janela de exposicao e remove a politica.
+schemaVersion: '0.3'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: Papel assumido pela automacao
+  RoleName:
+    type: String
+    default: sce-consumidor-role
+  PolicyName:
+    type: String
+    default: sce-e1-permissiva
+  FuncaoB:
+    type: String
+    default: sce-consumidor
+  BucketSensivel:
+    type: String
+  KeySensivel:
+    type: String
+    default: confidencial/segredo.json
+  JanelaExposicao:
+    type: String
+    default: PT2M
+    description: Tempo (ISO 8601) que a politica permanece anexada
+mainSteps:
+  # Controle: sem a politica, B NAO deve conseguir ler o bucket sensivel.
+  - name: SondarAntes
+    action: aws:invokeLambdaFunction
+    onFailure: Continue
+    isCritical: false
+    inputs:
+      FunctionName: '{{ FuncaoB }}'
+      InvocationType: RequestResponse
+      Payload: '{"sce_sondagem":{"bucket":"{{ BucketSensivel }}","key":"{{ KeySensivel }}"}}'
+  # Injecao
+  - name: AnexarPolitica
+    action: aws:executeAwsApi
+    onFailure: step:RemoverPolitica
+    onCancel: step:RemoverPolitica
+    inputs:
+      Service: iam
+      Api: PutRolePolicy
+      RoleName: '{{ RoleName }}'
+      PolicyName: '{{ PolicyName }}'
+      PolicyDocument: '{"Version":"2012-10-17","Statement":[{"Sid":"SceE1Permissiva","Effect":"Allow","Action":"s3:*","Resource":"*"}]}'
+  # Consistencia eventual do IAM
+  - name: AguardarPropagacao
+    action: aws:sleep
+    onFailure: step:RemoverPolitica
+    onCancel: step:RemoverPolitica
+    inputs:
+      Duration: PT20S
+  # Exploracao: B (simulando codigo comprometido) tenta ler o objeto sensivel
+  - name: SondarDurante
+    action: aws:invokeLambdaFunction
+    onFailure: step:RemoverPolitica
+    onCancel: step:RemoverPolitica
+    inputs:
+      FunctionName: '{{ FuncaoB }}'
+      InvocationType: RequestResponse
+      Payload: '{"sce_sondagem":{"bucket":"{{ BucketSensivel }}","key":"{{ KeySensivel }}"}}'
+  - name: JanelaDeExposicao
+    action: aws:sleep
+    onFailure: step:RemoverPolitica
+    onCancel: step:RemoverPolitica
+    inputs:
+      Duration: '{{ JanelaExposicao }}'
+  # Rollback (sempre executado)
+  - name: RemoverPolitica
+    action: aws:executeAwsApi
+    maxAttempts: 3
+    isCritical: true
+    onFailure: Abort
+    inputs:
+      Service: iam
+      Api: DeleteRolePolicy
+      RoleName: '{{ RoleName }}'
+      PolicyName: '{{ PolicyName }}'
+  - name: AguardarPropagacaoRollback
+    action: aws:sleep
+    onFailure: Continue
+    inputs:
+      Duration: PT20S
+  # Verificacao do rollback: acesso deve voltar a ser negado
+  - name: SondarDepois
+    action: aws:invokeLambdaFunction
+    onFailure: Continue
+    isCritical: false
+    isEnd: true
+    inputs:
+      FunctionName: '{{ FuncaoB }}'
+      InvocationType: RequestResponse
+      Payload: '{"sce_sondagem":{"bucket":"{{ BucketSensivel }}","key":"{{ KeySensivel }}"}}'
+outputs:
+  - SondarAntes.Payload
+  - SondarDurante.Payload
+  - SondarDepois.Payload
