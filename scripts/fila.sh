@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 # Executa a bateria de experimentos em sequência (um por vez, para não contaminar as métricas).
-# Uso: AWS_PROFILE=sce ./scripts/fila.sh
+# Uso: AWS_PROFILE=sce ./scripts/fila.sh ["EXP RODADA TAXA ESPERA" ...]   (sem argumentos: bateria completa)
 # Ordem: E3-atraso por último porque gera throttling e uma cauda longa de retries assíncronos.
 set -uo pipefail
 [[ "${AWS_PROFILE:-}" == "sce" ]] || { echo "Defina AWS_PROFILE=sce" >&2; exit 1; }
 cd "$(dirname "$0")/.."
+export AWS_MAX_ATTEMPTS="${AWS_MAX_ATTEMPTS:-10}"   # retries do SDK contra falhas transitórias de rede
+
+# Não sobrepõe experimentos: espera qualquer execução em andamento terminar
+while pgrep -f "scripts/rodar_experimento.mjs" >/dev/null; do
+  echo "  aguardando execução em andamento terminar"; sleep 30
+done
 
 FILA=(
   "E1 2 1 180"
@@ -18,6 +24,7 @@ FILA=(
   "E3-erro-50 1 5 300"
   "E3-atraso 1 5 300"
 )
+[[ $# -gt 0 ]] && FILA=("$@")
 for item in "${FILA[@]}"; do
   read -r exp rodada taxa espera <<<"$item"
   echo "=================== $(date -u +%T) $exp rodada $rodada (taxa $taxa, espera $espera)"
